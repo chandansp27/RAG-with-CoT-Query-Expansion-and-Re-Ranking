@@ -1,4 +1,9 @@
-from llama_index.retrievers.bm25 import BM25Retriever
+import torch
+from llama_index.core import StorageContext, Settings
+from llama_index.llms.huggingface import HuggingFaceLLM # type: ignore
+from transformers import BitsAndBytesConfig
+from llama_index.core.prompts import PromptTemplate
+from llama_index.retrievers.bm25 import BM25Retriever # type: ignore
 import logging
 import sys
 import utils
@@ -46,7 +51,7 @@ Task1 is to generate an answer to the query using the context in step by step me
 Task2 is to generate a concise and comprehensive answer to the query using the contents of the context retrieved from documents or a codebase.
 Perform task1 or task2 depending on the type specified in the query """
 
-def chainOfThoughtPrompt(reeanked_nodes, query):
+def chainOfThoughtPrompt(reranked_nodes, query):
     task1_prompt = f"""task1: "Chain of Thought answer" - Use the context from the documents retrieved to give a step by step answer to the query specified.
     Focus on incorporating key terms, synonyms, related concepts, and descriptive phrases to enhance the answer's scope and accuracy.
     Example:
@@ -61,10 +66,13 @@ def QAGenerationPrompt(reranked_nodes, query):
     only your answer without the context and the query. """
     return task2_prompt
 
+def cleanResponce(task, query, responce):
+    return responce.replace(task, ' ').replace(query, ' ')
+
 # HUGGING FACE inference
 def getResponse(input):
     API_URL = f"https://api-inference.huggingface.co/models/{utils.LLM_NAME}"
-    headers = {"Authorization": "Bearer XXXXXXXXXXXXXXXXXXXXXXX"} # HuggingFace Access Token
+    headers = {"Authorization": "Bearer xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} # hugging face access token
 
     def query(payload):
         response = requests.post(API_URL, headers=headers, json=payload)
