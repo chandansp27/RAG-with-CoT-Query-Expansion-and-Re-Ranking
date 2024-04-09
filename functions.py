@@ -1,9 +1,4 @@
-import torch
-from llama_index.core import StorageContext, Settings
-from llama_index.llms.huggingface import HuggingFaceLLM # type: ignore
-from transformers import BitsAndBytesConfig
-from llama_index.core.prompts import PromptTemplate
-from llama_index.retrievers.bm25 import BM25Retriever # type: ignore
+from llama_index.retrievers.bm25 import BM25Retriever
 import logging
 import sys
 import utils
@@ -68,8 +63,8 @@ def QAGenerationPrompt(reranked_nodes, query):
 
 # HUGGING FACE inference
 def getResponse(input):
-    API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
-    headers = {"Authorization": "Bearer xxxxxxxxxxxxxxxxxxxxxxxxxx"}
+    API_URL = f"https://api-inference.huggingface.co/models/{utils.LLM_NAME}"
+    headers = {"Authorization": "Bearer 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"}
 
     def query(payload):
         response = requests.post(API_URL, headers=headers, json=payload)
@@ -81,9 +76,4 @@ def getResponse(input):
     })
     s = output[0]['generated_text']
     s = s.replace('\n', ' ')
-    pattern = r'(?: answer without the context and the query)(.\s+(.*))'
-    match = re.findall(pattern, s)
-    if match:
-        return match[0][0]
-    else:
-        return output[0]['generated_text'][-300]
+    return output[0]['generated_text'][-1050:]
