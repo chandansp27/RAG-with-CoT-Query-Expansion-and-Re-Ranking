@@ -1,29 +1,19 @@
 import os
 import streamlit as st
-import time
 import tempfile
 from utils import FILE_TYPES, FILE_STORAGE_DIR, EMBEDDING_MODEL_NAME
 import shutil
-from PyPDF2 import PdfReader
 import functions
 from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
 import chromadb
-from sentence_transformers import SentenceTransformer # type: ignore
-from llama_index.vector_stores.chroma import ChromaVectorStore # type: ignore
+from llama_index.vector_stores.chroma import ChromaVectorStore
 from llama_index.core.node_parser import SentenceSplitter
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding # type: ignore
-from llama_index.core import StorageContext, Settings
-from llama_index.llms.huggingface import HuggingFaceLLM # type: ignore
-from llama_index.core import PromptTemplate
-from transformers import BitsAndBytesConfig
-from llama_index.core.prompts import PromptTemplate
-from llama_index.llms.huggingface import HuggingFaceLLM # type: ignore
-from llama_index.retrievers.bm25 import BM25Retriever # type: ignore
-from llama_index.core.retrievers import VectorIndexRetriever
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.core import StorageContext
+from llama_index.retrievers.bm25 import BM25Retriever
 import logging
 import sys
 import utils
-import re
 
 # logging settings for LLM
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -134,28 +124,17 @@ if uploaded_file:
         with st.chat_message("user"):
             st.markdown(prompt)
         st.session_state.messages.append({"role": "user", "content": prompt})
-        
-        # get nodes from query, run QE and cot, retrieve nodes again with cot+query and pass generated answer to st
-        
-        # temp
         cot_nodes = functions.retrieveNodes(prompt, nodes, 2)
         best_cot_nodes = functions.rerankNodes(cot_nodes, utils.K_RERANK)
         chain_of_thought = functions.getResponse(functions.chainOfThoughtPrompt(best_cot_nodes, prompt))
-
-        qa_nodes = functions.retrieveNodes(chain_of_thought, nodes, 2)
+        qa_nodes = functions.retrieveNodes(f'{prompt} {chain_of_thought}', nodes, 2)
         rerrank_qa = functions.rerankNodes(qa_nodes, utils.K_RERANK)
+        print(cot_nodes)
+        print(functions.chainOfThoughtPrompt(best_cot_nodes, prompt))
         response = functions.getResponse(functions.QAGenerationPrompt(rerrank_qa, prompt))
-        
-        cot_pattern = r'Step \d+: .+'
-        steps = re.findall(cot_pattern, chain_of_thought)
-        print(chain_of_thought, steps)
-        if steps:
-            cot_resonce = ['\n'.join(step for step in steps)][0]
-        else: 
-            cot_resonce = chain_of_thought
         with st.chat_message('assistant'):
             with st.popover('View CoT'):
-                st.markdown(f'{cot_resonce}')
+                st.markdown(f'{chain_of_thought}')
             st.write_stream(functions.textToGenerator(response))
         st.session_state.messages.append({'role': 'assistant', 'content': response})
 else:
