@@ -64,7 +64,7 @@ def QAGenerationPrompt(reranked_nodes, query):
 # HUGGING FACE inference
 def getResponse(input):
     API_URL = f"https://api-inference.huggingface.co/models/{utils.LLM_NAME}"
-    headers = {"Authorization": "Bearer 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"}
+    headers = {"Authorization": "Bearer XXXXXXXXXXXXXXXXXXXXXXX"} # HuggingFace Access Token
 
     def query(payload):
         response = requests.post(API_URL, headers=headers, json=payload)
