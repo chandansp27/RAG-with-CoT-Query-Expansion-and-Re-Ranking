@@ -6,11 +6,10 @@ import shutil
 import functions
 from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
 import chromadb
-from llama_index.vector_stores.chroma import ChromaVectorStore
+from llama_index.vector_stores.chroma import ChromaVectorStore # type: ignore
 from llama_index.core.node_parser import SentenceSplitter
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding # type: ignore
 from llama_index.core import StorageContext
-from llama_index.retrievers.bm25 import BM25Retriever
 import logging
 import sys
 import utils
@@ -124,19 +123,31 @@ if uploaded_file:
         with st.chat_message("user"):
             st.markdown(prompt)
         st.session_state.messages.append({"role": "user", "content": prompt})
-        cot_nodes = functions.retrieveNodes(prompt, nodes, 2)
+        cot_nodes = functions.retrieveNodes(prompt, nodes, utils.K_RETRIEVE)
         best_cot_nodes = functions.rerankNodes(cot_nodes, utils.K_RERANK)
-        chain_of_thought = functions.getResponse(functions.chainOfThoughtPrompt(best_cot_nodes, prompt))
-        qa_nodes = functions.retrieveNodes(f'{prompt} {chain_of_thought}', nodes, 2)
-        rerrank_qa = functions.rerankNodes(qa_nodes, utils.K_RERANK)
-        print(cot_nodes)
-        print(functions.chainOfThoughtPrompt(best_cot_nodes, prompt))
-        response = functions.getResponse(functions.QAGenerationPrompt(rerrank_qa, prompt))
+
+        # clean nodes, provide only text to the LLM
+        cot_context = '\n'.join([node.text for node in best_cot_nodes])
+        task1 = functions.chainOfThoughtPrompt(cot_context, prompt)
+        
+        # request chain of thought answer using the provided context for query expansion
+        cot_request = functions.getResponse(task1)
+        cot_cleaned = functions.cleanResponce(task1, prompt, cot_request)
+
+        # retrieve nodes using expanded cot-query
+        qa_nodes = functions.retrieveNodes(f'{prompt} {cot_cleaned}', nodes, utils.K_RETRIEVE)
+        rerrank_qa_nodes = functions.rerankNodes(qa_nodes, utils.K_RERANK)
+        
+        qa_context = '\n'.join([node.text for node in rerrank_qa_nodes])
+        task2 = functions.QAGenerationPrompt(qa_context, prompt)
+        qa_request = functions.getResponse(task2)
+
+        qa_cleaned = functions.cleanResponce(task2, prompt, qa_request)
         with st.chat_message('assistant'):
             with st.popover('View CoT'):
-                st.markdown(f'{chain_of_thought}')
-            st.write_stream(functions.textToGenerator(response))
-        st.session_state.messages.append({'role': 'assistant', 'content': response})
+                st.markdown(f'{cot_cleaned}')
+            st.write_stream(functions.textToGenerator(qa_cleaned))
+        st.session_state.messages.append({'role': 'assistant', 'content': qa_cleaned})
 else:
     st.markdown(""" ### RAG with :red[Query-expansion] and :blue[CoT] """)
     st.markdown(""" #### ***LLM: :green[Mistral-7b-Instruct-v2]*** ####""")
