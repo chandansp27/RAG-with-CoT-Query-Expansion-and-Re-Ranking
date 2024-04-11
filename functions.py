@@ -51,37 +51,38 @@ Task1 is to generate an answer to the query using the context in step by step me
 Task2 is to generate a concise and comprehensive answer to the query using the contents of the context retrieved from documents or a codebase.
 Perform task1 or task2 depending on the type specified in the query """
 
-def chainOfThoughtPrompt(reranked_nodes, query):
+def chainOfThoughtPrompt(query):
     task1_prompt = f"""task1: "Chain of Thought answer" - Use the context from the documents retrieved to give a step by step answer to the query specified.
     Focus on incorporating key terms, synonyms, related concepts, and descriptive phrases to enhance the answer's scope and accuracy.
-    Example:
-    context: {reranked_nodes},
-    query: {query},
-    answer: Let's think step by step.... generate the answer step by step... in a maximum of 5-6 steps"""
+    query : {query}"""
     return task1_prompt
 
-def QAGenerationPrompt(reranked_nodes, query):
-    task2_prompt = f"""task2: "Answer using context" - You are given context: {reranked_nodes} retrieved using the query: {query}.
-    You have to to use the content provided in the context and output a concise and comprehensive answer to the query, You have to output
-    only your answer without the context and the query. """
+def QAGenerationPrompt(query):
+    task2_prompt = f"""task2: "Answer using context" - Use the given context to answer the query:.
+    You have to to use the content provided in the context and output a concise and comprehensive answer to the query. 
+    query = {query}
+    only give the answer"""
     return task2_prompt
 
 def cleanResponce(task, query, responce):
-    return responce.replace(task, ' ').replace(query, ' ')
+    temp = responce.replace(task, ' ').replace(query, ' ')
+    match = re.findall(r'(?<=Answer:\n).*', responce)
+    return match[0] if match else temp
 
 # HUGGING FACE inference
-def getResponse(input):
+def getResponse(input, context):
     API_URL = f"https://api-inference.huggingface.co/models/{utils.LLM_NAME}"
-    headers = {"Authorization": "Bearer xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} # hugging face access token
+    headers = {"Authorization": "Bearer xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} # hugging-face access token
 
     def query(payload):
         response = requests.post(API_URL, headers=headers, json=payload)
         return response.json()
-        
+    
     output = query({
         "inputs": f"{input}",
+        "context": f'{context}',
         "parameters": {'max_new_tokens': utils.MAX_NEW_TOKENS}
     })
-    s = output[0]['generated_text']
-    s = s.replace('\n', ' ')
+    responce = output[0]['generated_text']
+    
     return output[0]['generated_text'][-1050:]
