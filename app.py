@@ -128,10 +128,10 @@ if uploaded_file:
 
         # clean nodes, provide only text to the LLM
         cot_context = '\n'.join([node.text for node in best_cot_nodes])
-        task1 = functions.chainOfThoughtPrompt(cot_context, prompt)
+        task1 = functions.chainOfThoughtPrompt(prompt)
         
         # request chain of thought answer using the provided context for query expansion
-        cot_request = functions.getResponse(task1)
+        cot_request = functions.getResponse(task1, cot_context)
         cot_cleaned = functions.cleanResponce(task1, prompt, cot_request)
 
         # retrieve nodes using expanded cot-query
@@ -139,8 +139,8 @@ if uploaded_file:
         rerrank_qa_nodes = functions.rerankNodes(qa_nodes, utils.K_RERANK)
         
         qa_context = '\n'.join([node.text for node in rerrank_qa_nodes])
-        task2 = functions.QAGenerationPrompt(qa_context, prompt)
-        qa_request = functions.getResponse(task2)
+        task2 = functions.QAGenerationPrompt(prompt)
+        qa_request = functions.getResponse(task2, qa_context)
 
         qa_cleaned = functions.cleanResponce(task2, prompt, qa_request)
         with st.chat_message('assistant'):
