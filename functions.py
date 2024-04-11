@@ -1,9 +1,5 @@
-import torch
-from llama_index.core import StorageContext, Settings
-from llama_index.llms.huggingface import HuggingFaceLLM # type: ignore
-from transformers import BitsAndBytesConfig
-from llama_index.core.prompts import PromptTemplate
-from llama_index.retrievers.bm25 import BM25Retriever # type: ignore
+from llama_index.core import StorageContext
+from llama_index.retrievers.bm25 import BM25Retriever
 import logging
 import sys
 import utils
